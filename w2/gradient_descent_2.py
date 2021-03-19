@@ -63,7 +63,7 @@ def loss_d_f(x, y, a, b):
 
 # 产生原始数据，并添加干扰
 def create_data():
-    d = [np.arange(-100, 100, 2), 3.0 * np.arange(-100, 100, 2) + 4.0 + (np.random.sample(100) * 2 - 1)]
+    d = [np.arange(-100, 100, 2), 3.0 * np.arange(-100, 100, 2) + 4.0 + np.random.normal(0,50,100)]
     return d
 
 
