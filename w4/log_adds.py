@@ -31,11 +31,10 @@ def init_data(path):
     x, y = np.split(data, (4,), axis=1)
     x = x[:, :4]
     y = y[:, 0]
-    init_beta = np.random.normal(0, 1, 5)
+
     x_hat = np.concatenate((x, np.ones((x.shape[0], 1))), axis=1)
     # init_beta = np.array([0.7, -2.0, 1.0, -0.2, 0.2])
-    print('init_beta : ', init_beta)
-    return x_hat, y, init_beta
+    return x_hat, y
 
 
 def loss(x_hat, y, beta):
@@ -61,7 +60,7 @@ def loss_d_f_beta(x_hat, y, beta):
     return l
 
 
-def get_beta(x_hat, y, init_beta):
+def get_beta(x_hat, y):
     """
     通过梯度下降法，计算参数
     :param x_hat:
@@ -69,13 +68,13 @@ def get_beta(x_hat, y, init_beta):
     :param init_beta:
     :return:
     """
-    beta = init_beta
+    beta = np.random.normal(0, 1, 5)
     learning_rate = [0.00001, 0.00001, 0.00001, 0.00001, 0.00001]  # 学习率
-    max_loop = 5000  # 最大迭代次数
+    max_loop = 50000  # 最大迭代次数
     tolerance = 0.001  # 容忍度
     fx_pre = 0  # 临时变量，用于存放上一次迭代的损失
     for i in range(max_loop):
-        d_f_x = loss_d_f_beta(x_hat, y, init_beta)
+        d_f_x = loss_d_f_beta(x_hat, y, beta)
         beta -= learning_rate * d_f_x
         # print(beta)
         fx_cur = loss(x_hat, y, beta)
@@ -99,19 +98,18 @@ def predict(x_test, beta):
     return np.where(_y < 0.5, 1, 0)  # l中大于0.5的为第0类，小于等于0.5的为第1类
 
 
-def train(x, y, init_beta):
+def train(x, y):
     """
     开始训练
     :param x:
     :param y:
-    :param init_beta:
     :return:
     """
     my_n_splits = 10
     kf = KFold(n_splits=my_n_splits, shuffle=True)
     _count = 1
     all_measure_value = np.array([])
-    all_confusion_matrix = np.zeros((3, 3))
+    # all_confusion_matrix = np.zeros((3, 3))
     for train_index, test_index in kf.split(x):
         print(f'==========第 {_count} 折数据训练的结果如下===========')
         _count += 1
@@ -119,7 +117,7 @@ def train(x, y, init_beta):
         x_test = x[test_index]
         y_train = y[train_index]
         y_test = y[test_index]
-        _beta = get_beta(x_train, y_train, init_beta)
+        _beta = get_beta(x_train, y_train)
         y_hat = predict(x_test, _beta)
         _diff_y = y_hat + y_test * 2  # y_test 如果为0 y_hat 也为0的话，或者y_test 如果为1 y_hat 也为1的话就表示预测争取，否则错误
         _accuracy = len([_y for _y in _diff_y if (_y == 0 or _y == 3)]) / len(_diff_y)
@@ -161,5 +159,5 @@ def train(x, y, init_beta):
 
 if __name__ == '__main__':
     path = './iris.data'  # 数据文件路径
-    x, y, beta = init_data(path)
-    train(x, y, beta)
+    x, y = init_data(path)
+    train(x, y)
