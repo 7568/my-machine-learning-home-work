@@ -46,7 +46,7 @@ def loss(x_hat, y, beta):
     x_hat = x_hat.T  # 为了跟书上的公式一致
     y = y.T
     beta = beta.T
-    l = -y @ (beta.T @ x_hat).T + (1 - y) @ np.log(1 + np.exp(beta.T @ x_hat)).T
+    l = -y @ (beta.T @ x_hat).T + np.sum(np.log(1 + np.exp(beta.T @ x_hat)).T)
     return l
 
 
