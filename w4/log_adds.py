@@ -26,14 +26,15 @@ def init_data(path):
     :return:
     """
     data = np.loadtxt(path, dtype=float, delimiter=',', converters={4: iris_type})
-    data = [d for d in data if d[4] != 2]
+    # data = [d for d in data if d[4] != 2]
+    data = data[data[:, 4] != 2]
     x, y = np.split(data, (4,), axis=1)
     x = x[:, :4]
     y = y[:, 0]
     init_beta = np.random.normal(0, 1, 5)
     x_hat = np.concatenate((x, np.ones((x.shape[0], 1))), axis=1)
     # init_beta = np.array([0.7, -2.0, 1.0, -0.2, 0.2])
-    print('init_beta : ',init_beta)
+    print('init_beta : ', init_beta)
     return x_hat, y, init_beta
 
 
@@ -45,7 +46,7 @@ def loss(x_hat, y, beta):
     x_hat = x_hat.T  # 为了跟书上的公式一致
     y = y.T
     beta = beta.T
-    l = np.sum(-y * (beta.T @ x_hat).T + np.log(1 + np.exp(beta.T @ x_hat)))
+    l = -y @ (beta.T @ x_hat).T + (1 - y) @ np.log(1 + np.exp(beta.T @ x_hat)).T
     return l
 
 
@@ -85,14 +86,16 @@ def get_beta(x_hat, y, init_beta):
     return beta
 
 
-def predict(x_train, beta):
+def predict(x_test, beta):
     """
     进行预测，根据公式3.24
-    :param x_train:
+    :param x_test:
     :param beta:
     :return:
     """
-    _y = np.array([(1 / (1 + math.exp(beta.T @ _x))) for _x in x_train])
+    x_test = x_test.T
+    beta = beta.T
+    _y = 1 / (1 + np.exp(beta.T @ x_test))
     return np.where(_y < 0.5, 1, 0)  # l中大于0.5的为第0类，小于等于0.5的为第1类
 
 
