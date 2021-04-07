@@ -1,10 +1,8 @@
 # -*- coding: UTF-8 -*-
 """
-Created by louis at 2021/3/30
+Created by louis at 2021/4/07
 Description:
-1.完成书上公式3.10和3.27的推导。
-
-2.用梯度下降的方法实现对数几率回归二分类算法，数据采用iris，数据只取前两个类别，并如上次实验一样进行模型评估（不需要ROC曲线）。
+softmax回归对iris数据全部类别进行多分类，用交叉验证法输出评估结果
 """
 import math
 
@@ -129,23 +127,12 @@ def train(x, y):
         _beta = get_omiga(x_train, y_train)
         y_hat = predict(x_test, _beta)
         y_test = np.argmax(y_test, axis=1)
-        # _diff_y = y_hat + np.argmax(y_test, axis=1) * 3  # y_test 如果为0 y_hat 也为0的话，或者y_test 如果为1 y_hat 也为1的话就表示预测争取，否则错误
-        # _accuracy = len([_y for _y in _diff_y if (_y == 0 or _y == 4 or _y == 8)]) / len(_diff_y)
+
         _accuracy = accuracy_score(y_test, y_hat)
         all_measure_value = np.append(all_measure_value, _accuracy)
         print('精度 ： ', _accuracy, ' , 错误率 ： ', 1 - _accuracy)
         all_measure_value = np.append(all_measure_value, 1 - _accuracy)
-        # tp1 = len([_y for _y in _diff_y if _y == 0])  # 被检索到第一类样本，实际也是第一类样本
-        # fp1 = len([_y for _y in _diff_y if _y == 3 or _y == 6])  # 被检索到第一类样本，实际是第二类样本或者第三类
-        # tp2 = len([_y for _y in _diff_y if _y == 4])  # 未被检索到第二类样本，实际也是第二类样本
-        # fp2 = len([_y for _y in _diff_y if _y == 1 or _y == 7])  # 未被检索到第二类样本，实际是第一类样本或者第三类
-        # tp3 = len([_y for _y in _diff_y if _y == 8])  # 未被检索到第三类样本，实际也是第三类样本
-        # fp3 = len([_y for _y in _diff_y if _y == 2 or _y == 5])  # 未被检索到第三类样本，实际是第一类样本或者第二类
-        #
-        # tf = [tp1, fp1, tp2, fp2, tp3, fp3]
-        # c1_num = len(np.where(np.argmax(y_test, axis=1) == 0))
-        # c2_num = len(np.where(np.argmax(y_test, axis=1) == 1))
-        # c3_num = len(np.where(np.argmax(y_test, axis=1) == 2))
+
         p1 = precision_score(y_test, y_hat, average=None)
         r1 = recall_score(y_test, y_hat, average=None)
         f1 = f1_score(y_test, y_hat, average=None)
@@ -160,12 +147,6 @@ def train(x, y):
             print(f'第{i}类的F1 : {f1[i]}')
             all_measure_value = np.append(all_measure_value, f1[i])
 
-        # print('第二类的查准率 : ', tn / (tn + fn))
-        # all_measure_value = np.append(all_measure_value, tn / (tn + fn))
-        # print('第二类的查全率 : ', tn / (tn + fp))
-        # all_measure_value = np.append(all_measure_value, tn / (tn + fp))
-        # print('第二类的F1 : ', 2 * tn / (len(y_test) + tn - tp))
-        # all_measure_value = np.append(all_measure_value, 2 * tn / (len(y_test) + tn - tp))
     all_measure_value = all_measure_value.reshape((5, 11))
     mean_measure_value = np.mean(all_measure_value, axis=0)
 
