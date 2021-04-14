@@ -48,7 +48,7 @@ def train(x, y):
     _count = 1
     epoch = 200
     bach = 32
-    L_R = 0.003
+    L_R = 0.002
     first_net = FirstNet(L_R)
     for i in range(epoch):
         for j in IrisDataIter(train_set_indexs, bach):

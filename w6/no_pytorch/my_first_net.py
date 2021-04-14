@@ -126,9 +126,11 @@ class CrossEntropy(BasicModule):
 class FirstNet(BasicModule):
     def __init__(self, l_r):
         BasicModule.l_r = l_r
-        self.hides = [LinearLayer(5, 64),
+        self.hides = [LinearLayer(5, 16),
                       Relu(),
-                      LinearLayer(64, 3),
+                      LinearLayer(16, 16),
+                      Relu(),
+                      LinearLayer(16, 3),
                       Softmax()]
         self.cross_en = CrossEntropy()
 
