@@ -46,21 +46,22 @@ def train(x, y):
     val_set_indexs = np.random.choice(range(num), int(num / 7), replace=False)
     train_set_indexs = [k for k in range(num) if k not in val_set_indexs]
     _count = 1
-    epoch = 5000
-    bach = 130
+    epoch = 200
+    bach = 32
     L_R = 0.003
     first_net = FirstNet(L_R)
-    pre_loss = 0
     for i in range(epoch):
         for j in IrisDataIter(train_set_indexs, bach):
             x_train = x[j]
             y_train = y[j]
             first_net.forward(x_train.T, y_train)
             first_net.backward(y_train)
+
         y_hat, loss = first_net.forward(x[val_set_indexs].T, y[val_set_indexs])
         y_test = np.argmax(y[val_set_indexs], axis=1)
         y_hat = np.argmax(y_hat.T, axis=1)
         test_accuracy = accuracy_score(y_hat, y_test)
+
         y_hat, loss = first_net.forward(x[train_set_indexs].T, y[train_set_indexs])
         y_test = np.argmax(y[train_set_indexs], axis=1)
         y_hat = np.argmax(y_hat.T, axis=1)
