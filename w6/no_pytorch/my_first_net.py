@@ -28,7 +28,7 @@ class LinearLayer(BasicModule):
         :param output_num: 该层神经元的个数
         """
         self.X = None
-        self.W = np.random.normal(0, 1, (input_num, output_num))
+        self.W = np.random.normal(0, 1, (input_num, output_num)) / np.sqrt(input_num / 2)
 
     def forward(self, x_i):
         self.X = x_i
