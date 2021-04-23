@@ -42,7 +42,7 @@ def train(x, y):
     """
 
     num = len(x)
-    val_set_indexs = np.random.choice(range(num), int(num / 7), replace=False)
+    val_set_indexs = np.random.choice(range(num), int(num / 10), replace=False)
     train_set_indexs = [k for k in range(num) if k not in val_set_indexs]
     _count = 1
     epoch = 5000
