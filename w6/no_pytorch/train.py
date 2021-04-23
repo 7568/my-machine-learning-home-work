@@ -45,7 +45,7 @@ def train(x, y):
     val_set_indexs = np.random.choice(range(num), int(num / 10), replace=False)
     train_set_indexs = [k for k in range(num) if k not in val_set_indexs]
     _count = 1
-    epoch = 5000
+    epoch = 200
     bach = 30
     L_R = 0.001
     first_net = FirstNet(L_R)
