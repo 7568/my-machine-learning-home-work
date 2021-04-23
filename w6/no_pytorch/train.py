@@ -75,3 +75,5 @@ if __name__ == '__main__':
     path = '../iris.data'  # 数据文件路径
     x, y = init_data(path)
     train(x, y)
+
+

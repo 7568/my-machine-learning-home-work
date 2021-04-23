@@ -174,3 +174,4 @@ class FirstNet(BasicModule):
         loss_grad = self.error_measure.backward(labels)
         for n in reversed(self.hides):
             loss_grad = n.backward(loss_grad)
+
