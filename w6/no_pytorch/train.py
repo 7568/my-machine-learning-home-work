@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, mean_squared_error
 from my_first_net import FirstNet, BasicModule
 from data_iter import IrisDataIter
+import random
 
 
 def init_data(path):
@@ -25,7 +26,7 @@ def init_data(path):
     y = np.array(y[:, 0], dtype=int)
     y = np.eye(y.max() + 1)[y]
 
-    x = np.concatenate((x, np.ones((x.shape[0], 1))), axis=1)
+    # x = np.concatenate((x, np.ones((x.shape[0], 1))), axis=1)
     return x, y
 
 
@@ -46,23 +47,24 @@ def train(x, y):
     val_set_indexs = np.random.choice(range(num), int(num / 7), replace=False)
     train_set_indexs = [k for k in range(num) if k not in val_set_indexs]
     _count = 1
-    epoch = 200
-    bach = 32
-    L_R = 0.002
+    epoch = 5000
+    bach = 30
+    L_R = 0.001
     first_net = FirstNet(L_R)
     for i in range(epoch):
+        random.shuffle(train_set_indexs)
         for j in IrisDataIter(train_set_indexs, bach):
             x_train = x[j]
             y_train = y[j]
-            first_net.forward(x_train.T, y_train)
-            first_net.backward(y_train)
+            first_net.forward(x_train.T, y_train.T)
+            first_net.backward(y_train.T)
 
-        y_hat, loss = first_net.forward(x[val_set_indexs].T, y[val_set_indexs])
+        y_hat, loss = first_net.forward(x[val_set_indexs].T, y[val_set_indexs].T)
         y_test = np.argmax(y[val_set_indexs], axis=1)
         y_hat = np.argmax(y_hat.T, axis=1)
         test_accuracy = accuracy_score(y_hat, y_test)
 
-        y_hat, loss = first_net.forward(x[train_set_indexs].T, y[train_set_indexs])
+        y_hat, loss = first_net.forward(x[train_set_indexs].T, y[train_set_indexs].T)
         y_test = np.argmax(y[train_set_indexs], axis=1)
         y_hat = np.argmax(y_hat.T, axis=1)
         train_accuracy = accuracy_score(y_hat, y_test)
