@@ -13,8 +13,6 @@ import random
 def init_data(path):
     """
     初始化数据：
-    1 过滤掉 Iris-virginica 对应的数据
-    2 将x加一列全为1的列，将w*x+b变成beta*x
     :param path:
     :return:
     """
