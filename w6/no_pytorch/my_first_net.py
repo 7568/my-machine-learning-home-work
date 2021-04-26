@@ -159,11 +159,13 @@ class FirstNet(BasicModule):
                       LinearLayer(8, 16),
                       Relu(),
                       LinearLayer(16, 3),
-                      Relu(),
+                      # Relu(),
                       Softmax()]
         self.error_measure = CrossEntropy()
 
     def forward(self, x, labels):
+        # x2 = np.array(x, dtype=float)
+        # x = (x2 - np.mean(x2, axis=1, keepdims=True)) / np.std(x2, axis=1, keepdims=True)  # 将x进行标准化操作
         for n in self.hides:
             x = n.forward(x)
         loss = self.error_measure.forward(x, labels)
@@ -174,4 +176,3 @@ class FirstNet(BasicModule):
         loss_grad = self.error_measure.backward(labels)
         for n in reversed(self.hides):
             loss_grad = n.backward(loss_grad)
-

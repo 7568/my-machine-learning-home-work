@@ -46,5 +46,8 @@ def softmax(z):
 # b = np.array([1,2,3,4,5])
 # print(b[-1])
 
-a = np.array(range(16)).reshape(4,4)
+a = np.array(range(20)).reshape(4,5)
 print(a)
+b = np.mean(a,axis=1).reshape(4,1)
+print(b)
+print(a+b)
