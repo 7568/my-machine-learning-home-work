@@ -5,7 +5,7 @@ Description:
 """
 import numpy as np
 from sklearn.metrics import accuracy_score, mean_squared_error
-from my_first_net import FirstNet, BasicModule
+from my_first_net_no_bach import FirstNet, BasicModule
 from data_iter import IrisDataIter
 import random
 
