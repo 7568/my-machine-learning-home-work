@@ -41,12 +41,11 @@ class LinearLayer(BasicModule):
         return H
 
     def backward(self, grad):
-        new_grad = grad @ self.W.T
-        # x = np.row_stack(self.prev_data,self.prev_data,self.prev_data)
-        grad_w =  self.prev_data@grad
+        new_grad = self.W @ grad
+        grad_w = self.prev_data @ grad.T
         grad_w = np.concatenate((grad_w, np.ones((1, grad_w.shape[1]))), axis=0)
-        self.W -= BasicModule.l_r * grad_w
-        return new_grad[:,0:-1]  # , grad_W
+        self.W -= BasicModule.l_r * (grad_w / self.prev_data.shape[1])
+        return new_grad[0:-1, :]  # , grad_W
 
 
 class Sigmoid(BasicModule):
@@ -76,7 +75,8 @@ class Relu(BasicModule):
 
     def backward(self, grad):
         X = self.prev_data
-        return grad @ ((X > 0).astype(np.float32) * np.eye(X.shape[0]))
+        result = (X > 0).astype(np.float32) * grad
+        return result
 
 
 class Softmax(BasicModule):
@@ -87,9 +87,10 @@ class Softmax(BasicModule):
         self.epsilon = 1e-12  # 防止求导后分母为 0
 
     def forward(self, prev_data):
+        # p_exp = np.exp(prev_data - np.max(prev_data, axis=0))
         p_exp = np.exp(prev_data)
         denominator = np.sum(p_exp, axis=0, keepdims=True)
-        self.forward_output = p_exp / (denominator + self.epsilon)
+        self.forward_output = p_exp / denominator
         return self.forward_output
 
     def backward(self, grad_b):
@@ -98,13 +99,14 @@ class Softmax(BasicModule):
         :return:
         https://themaverickmeerkat.com/2019-10-23-Softmax/
         """
+
         forward_output = self.forward_output
         # n = forward_output.shape[1]
         # tensor1 = np.einsum('ij,ik->ijk', forward_output, forward_output)
         # tensor2 = np.einsum('ij,jk->ijk', forward_output, np.eye(n, n))
         # dSoftmax = tensor2 - tensor1
         # dz = np.einsum('ijk,ik->ij', dSoftmax, grad_b)
-        #
+
         # s = self.forward_output
         # sisj = np.matmul(np.expand_dims(s, axis=2), np.expand_dims(s, axis=1))
         # tmp = np.matmul(np.expand_dims(grad_b, axis=1), sisj)
@@ -116,10 +118,15 @@ class Softmax(BasicModule):
         # c = a * b
         # b = np.array([np.sum(i * forward_output, axis=0) for i in forward_output])
         # c = forward_output - b
-        d_softmax = np.eye(3, 3) - forward_output @ forward_output.T
-        input_grad = grad_b @ d_softmax
-        # d = c * grad_b
-        return input_grad
+        _input_grad = np.array([])
+        for i in range(forward_output.shape[1]):
+            _forward_output = forward_output[:, i]
+            d_softmax = _forward_output * np.identity(3) - _forward_output.reshape(3,1) @ _forward_output.reshape(1,3)
+            input_grad = grad_b[:, i] @ d_softmax
+            _input_grad = np.append(_input_grad, input_grad)
+        _input_grad = _input_grad.reshape(int(_input_grad.shape[0] / 3),3)
+
+        return _input_grad.T
 
 
 # 实现交叉熵损失函数
@@ -135,7 +142,10 @@ class CrossEntropy(BasicModule):
 
     def backward(self, y):
         p = self.pre_data
-        return -y * (1 / (p + self.epsilon))
+        # print(p - y)
+        # print(-y * (1 / p))
+        return -y * (1 / p)
+        # return p-y
 
 
 # 实现均方误差损失函数
@@ -156,7 +166,7 @@ class MeanSquaredError(BasicModule):
 
     def backward(self, y):
         p = self.mem['p']
-        return (p - y).T  # 一个数对一个向量求导的输出是一个行向量
+        return (p - y)  # 一个数对一个向量求导的输出是一个行向量
 
 
 # 搭建全连接神经网络模型
@@ -165,14 +175,14 @@ class FirstNet(BasicModule):
     def __init__(self, l_r):
         self.pre_loss = 0
         BasicModule.l_r = l_r
-        self.hides = [LinearLayer(4, 8),
+        self.hides = [LinearLayer(4, 128),  # w:8x4 x:4x10
+                      Relu(),  # x: 8x10
+                      LinearLayer(128, 64),  # w:3x8 3x10
                       Relu(),
-                      LinearLayer(8, 3),
-                      # Relu(),
-                      # LinearLayer(16, 3),
+                      LinearLayer(64, 3),
                       # Relu(),
                       Softmax()]
-        self.error_measure = MeanSquaredError()
+        self.error_measure = CrossEntropy()
 
     def forward(self, x, labels):
         # x2 = np.array(x, dtype=float)

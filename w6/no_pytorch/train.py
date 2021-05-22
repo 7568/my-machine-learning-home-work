@@ -50,7 +50,7 @@ def train(x, y):
     L_R = 0.001
     first_net = FirstNet(L_R)
     for i in range(epoch):
-        random.shuffle(train_set_indexs)
+
         for j in IrisDataIter(train_set_indexs, bach):
             x_train = x[j]
             y_train = y[j]

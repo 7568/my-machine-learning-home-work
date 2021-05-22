@@ -24,13 +24,15 @@ class IrisDataIter:
         if self.index < self.length - 1:
             self.index += 1
             _start = self.index * self.bach
-            if _start > self.length:
+            if _start >= self.length:
                 raise StopIteration
             _end = (self.index + 1) * self.bach
             if _end > self.length:
                 _end = self.length
                 # _start = _end - self.bach  # 最后一波直接取最后bach个元素
             _train_index = self.data[_start: _end]
+            if len(_train_index)==0:
+                print(_start)
             return _train_index
         else:
             raise StopIteration

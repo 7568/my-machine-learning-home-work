@@ -124,6 +124,7 @@ class CrossEntropy(BasicModule):
 
     def backward(self, y):
         p = self.pre_data
+        print(p-y)
         return -y * (1 / (p + self.epsilon))
 
 

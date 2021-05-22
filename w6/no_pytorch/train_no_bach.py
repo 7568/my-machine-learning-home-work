@@ -45,9 +45,9 @@ def train(x, y):
     val_set_indexs = np.random.choice(range(num), int(num / 10), replace=False)
     train_set_indexs = [k for k in range(num) if k not in val_set_indexs]
     _count = 1
-    epoch = 200
-    bach = 1
-    L_R = 0.001
+    epoch = 1500
+    bach = 5
+    L_R = 0.0003
     first_net = FirstNet(L_R)
     for i in range(epoch):
         random.shuffle(train_set_indexs)
@@ -58,6 +58,7 @@ def train(x, y):
             first_net.backward(y_train.T)
 
         y_hat, loss = first_net.forward(x[val_set_indexs].T, y[val_set_indexs].T)
+        # print(loss)
         y_test = np.argmax(y[val_set_indexs], axis=1)
         y_hat = np.argmax(y_hat.T, axis=1)
         test_accuracy = accuracy_score(y_hat, y_test)

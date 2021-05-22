@@ -26,6 +26,7 @@ data_iter = load_array((features, labels), batch_size)
 
 
 net = nn.Sequential(nn.Linear(2, 1))
+nn.MaxPool2d
 net[0].weight.data.normal_(0, 0.01)
 net[0].bias.data.fill_(0)
 
