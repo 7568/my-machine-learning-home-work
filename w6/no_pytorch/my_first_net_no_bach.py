@@ -87,8 +87,8 @@ class Softmax(BasicModule):
         self.epsilon = 1e-12  # 防止求导后分母为 0
 
     def forward(self, prev_data):
-        # p_exp = np.exp(prev_data - np.max(prev_data, axis=0))
-        p_exp = np.exp(prev_data)
+        p_exp = np.exp(prev_data - np.max(prev_data, axis=0))
+        # p_exp = np.exp(prev_data)
         denominator = np.sum(p_exp, axis=0, keepdims=True)
         self.forward_output = p_exp / denominator
         return self.forward_output
