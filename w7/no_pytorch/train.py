@@ -5,7 +5,7 @@ Description:
 """
 import numpy as np
 from sklearn.metrics import accuracy_score
-from my_first_cnn_2 import FirstNet
+from my_first_cnn import FirstNet
 import time
 import pickle
 import mnist
@@ -25,15 +25,17 @@ def train():
 
     _count = 1
     epoch = 200
-    L_R = 0.002
+    L_R = 0.0005
     bach = 16
     first_net = FirstNet(L_R)
     # with open("net_save/first_net.pkl", 'rb') as file:
     #     first_net = pickle.loads(file.read())
+    first_net.l_r = L_R
+    test_accuracy=0
     for i in range(epoch):
-        if (epoch+1)%3==0:
-            L_R *= 0.8
-            first_net.l_r = L_R
+        # if (epoch+1)%3==0:
+        #     L_R *= 0.8
+        #     first_net.l_r = L_R
         now = time.time()
         for j in IrisDataIter(np.arange(len(train_images)), bach):
             x_train = train_images[j]
@@ -44,16 +46,20 @@ def train():
             first_net.backward(one_hot_y_train)
             # print(f'loss : {loss}')
 
-        with open("net_save/first_net.pkl", "wb") as f:
-            pickle.dump(first_net, f)
+
         print((time.time() - now))
 
         one_hot_test_labels = np.eye(10)[test_labels].T
         formated_test_images = test_images.reshape(len(test_images), 1, 28, 28)
         y_hat, loss = first_net.forward(formated_test_images, one_hot_test_labels)
         y_hat = np.argmax(y_hat, axis=0)
-        test_accuracy = accuracy_score(y_hat, test_labels)
-        print(f'epoch : {i} , 精度 in test ： {test_accuracy} , 平均loss ： {np.mean(loss)}')
+        test_accuracy2 = accuracy_score(y_hat, test_labels)
+        if test_accuracy2>test_accuracy:
+            test_accuracy = test_accuracy2
+            with open("net_save/first_net.pkl", "wb") as f:
+                pickle.dump(first_net, f)
+
+        print(f'epoch : {i} , 精度 in test ： {test_accuracy2} , 平均loss ： {np.mean(loss)}')
 
 
 if __name__ == '__main__':
