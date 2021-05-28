@@ -34,10 +34,17 @@ class LinearLayer(BasicModule):
         self.prev_data = None
         self.input_num = input_num
         self.output_num = output_num
+        # W : weight + bias , weight:length of feature x output number , bias:1 x output number
         self.W = np.random.normal(0, 1, (input_num + 1, output_num)) / np.sqrt((input_num + 1) / 2)
 
     def forward(self, prev_data):
+        """
+
+        :param prev_data: row:length of feature , column: bach
+        :return:
+        """
         self.prev_data = prev_data
+
         prev_data_new = np.concatenate((prev_data, np.ones((1, prev_data.shape[1]))), axis=0)
         H = self.W.T @ prev_data_new
         return H
@@ -69,12 +76,11 @@ class Conv2d(BasicModule):
         self.stride = stride
         self.padding = padding
 
-        # filters is a 3d array with dimensions (num_filters, 3, 3)
-        # We divide by (kernel_size*kernel_size) to reduce the variance of our initial values
         self.filters = np.random.randn(out_channels, in_channels, kernel_size, kernel_size) / (kernel_size ** 2)
+        self.filters2 = self.filters
         self.filters = self.filters.flatten()
-        self.filters = self.filters.reshape((in_channels * kernel_size * kernel_size, out_channels))
-        self.bias = np.random.randn(self.filters.shape[1], 1)
+        self.filters = self.filters.reshape(out_channels, in_channels * kernel_size * kernel_size)
+        self.bias = None
 
     def forward(self, input, filters=None):
         """
@@ -92,29 +98,25 @@ class Conv2d(BasicModule):
         out_size = (np.array([h0, w0]) - self.kernel_size + 1) / self.stride
         output = np.zeros((b0, self.out_channels, int(out_size[0]), int(out_size[1])))
 
-        flatted_input = np.zeros(
-            (b0, int(out_size[0]) * int(out_size[1]), n0 * self.kernel_size * self.kernel_size))
-
-        for bb in range(b0):
-            count = 0
-            for h in range(int(out_size[0])):
-                for w in range(int(out_size[1])):
-                    x_slice = input_padded[bb, :, h * self.stride:h * self.stride + self.kernel_size,
-                              w * self.stride:w * self.stride + self.kernel_size]
-                    x_slice = x_slice.flatten()
-                    flatted_input[bb, count, :] = x_slice
-                    count += 1
+        list_flatted_input = list()
+        row_numbers = int(out_size[0]) * int(out_size[1])
+        for h in range(int(out_size[0])):
+            for w in range(int(out_size[1])):
+                x_slice = input_padded[:, :, h * self.stride:h * self.stride + self.kernel_size,
+                          w * self.stride:w * self.stride + self.kernel_size]
+                list_flatted_input.append(x_slice)
+        flatted_input2 = np.asarray(list_flatted_input).reshape(row_numbers, b0,
+                                                                self.in_channels * self.kernel_size * self.kernel_size)
+        flatted_input = np.swapaxes(flatted_input2, 0, 1)
 
         self.last_input = flatted_input
         _output = np.zeros((b0, self.out_channels, flatted_input.shape[1]))
+        self.bias = np.random.randn(self.out_channels, flatted_input.shape[1])
 
         for bb in range(b0):
-            _output[bb, :, :] = (flatted_input[bb, :, :] @ self.filters).T + self.bias
+            _output[bb, :, :] = self.filters @ flatted_input[bb, :, :].T + self.bias
 
-        # output = _output.reshape(b0, self.out_channels, int(out_size[0]), int(out_size[1]))
-        for bb in range(b0):
-            output[bb, :, :, :] = _output[bb, :, :].reshape(self.out_channels, int(out_size[0]),
-                                                                int(out_size[1]))
+        output = _output.reshape(b0, self.out_channels, int(out_size[0]), int(out_size[1]))
 
         return output
 
@@ -131,33 +133,32 @@ class Conv2d(BasicModule):
         grad_pre = grad_pre.reshape((o, c, h * w))
         dF = np.zeros(self.filters.shape)
         db = np.zeros(self.bias.shape)
-        for bb in range(o):
-            dF += (grad_pre[bb, :, :] @ self.last_input[bb, :, :]).T
-            db += np.sum(grad_pre[bb, :, :], axis=1).reshape(c, 1)
-
         _dX = np.zeros(self.last_input.shape)
         for bb in range(o):
-            _dX[bb, :, :] = (self.filters @ grad_pre[bb, :, :]).T
+            dF += grad_pre[bb, :, :] @ self.last_input[bb, :, :]
+            db += grad_pre[bb, :, :]
+            _dX[bb, :, :] = (self.filters.T @ grad_pre[bb, :, :]).T
 
         self.filters -= BasicModule.l_r * dF / o
         self.bias -= BasicModule.l_r * db / o
         # 剔除掉_dX中重复数据，方法是跟卷积操作形式一样，原来是一步一步的取小方格，现在是从_dX中获得小方格一步一步的放回去
-        padding_x = np.zeros(self.input_padded.shape)
-        pb, pn, ph, pw = padding_x.shape
+        pb, pn, ph, pw = self.input_padded.shape
         dX = np.zeros(self.input.shape)
         out_size = (np.array([ph, pw]) - self.kernel_size + 1) / self.stride
-        for bb in range(pb):
-            count = 0
-            for h in range(int(out_size[0])):
-                for w in range(int(out_size[1])):
-                    k = _dX[bb, count, :].reshape(self.in_channels, self.kernel_size, self.kernel_size)
-                    padding_x[bb, :, h * self.stride:h * self.stride + self.kernel_size,
-                    w * self.stride:w * self.stride + self.kernel_size] = k
-                    count += 1
+
+        padding_x2 = np.zeros((pb, pn, ph, pw))
+        _dX2 = np.swapaxes(_dX, 0, 1)
+        count = 0
+        for h in range(int(out_size[0])):
+            for w in range(int(out_size[1])):
+                k = _dX2[count, :, :].reshape(pb, self.in_channels, self.kernel_size, self.kernel_size)
+                padding_x2[:, :, h * self.stride:h * self.stride + self.kernel_size,
+                w * self.stride:w * self.stride + self.kernel_size] = k
+                count += 1
+        padding_x = padding_x2
+
         # 去掉padding的部分
-        # dX[:, :, :, :] = padding_x[:, :, self.padding:ph - self.padding, self.padding:pw - self.padding]
-        for bb in range(pb):
-            dX[bb, :, :, :] = padding_x[bb, :, self.padding:ph - self.padding, self.padding:pw - self.padding]
+        dX[:, :, :, :] = padding_x[:, :, self.padding:ph - self.padding, self.padding:pw - self.padding]
 
         return dX
 
@@ -176,22 +177,30 @@ class Flatting(BasicModule):
         return flated.T
 
     def backward(self, grad_b):
+        """
+
+        :param grad_b: row : features number , column : bach size
+        :return:
+        """
+        grad_b = grad_b.T
         grad_b = grad_b.reshape(self.prev_data.shape)
         return grad_b
 
 
-class Relu2d(BasicModule):
+class Relu(BasicModule):
     def __init__(self):
         self.prev_data = None
+        self.filter = None
 
     def forward(self, prev_data):
         self.prev_data = prev_data
-        result = np.where(prev_data > 0, prev_data, np.zeros_like(prev_data))
+        self.filter = (prev_data > 0).astype(np.float32)
+        # result = np.where(prev_data > 0, prev_data, np.zeross_like(prev_data))
+        result = self.filter * prev_data
         return result
 
     def backward(self, grad_b):
-        X = self.prev_data
-        result = (X > 0).astype(np.float32) * grad_b
+        result = self.filter * grad_b
         return result
 
 
@@ -203,7 +212,6 @@ class MaxPool2d(BasicModule):
         self.max_pool_for_back = None
 
     def forward(self, prev_data):
-
         self.prev_data = prev_data
 
         bach, num_filters, h, w = prev_data.shape
@@ -212,16 +220,30 @@ class MaxPool2d(BasicModule):
             print('MaxPool2d 参数错误！')
         new_h = h // k_s
         new_w = w // k_s
-        output = np.zeros((bach, num_filters, new_h, new_w))
-        max_pool_for_back = np.zeros(prev_data.shape)
-        for bb in range(bach):
-            for n in range(num_filters):
-                for i in range(new_h):
-                    for j in range(new_w):
-                        im_region = prev_data[bb, n, (i * k_s):(i * k_s + k_s), (j * k_s):(j * k_s + k_s)]
-                        max_index = np.argmax(im_region)
-                        output[bb, n, i, j] = prev_data[bb, n, i * k_s + max_index // k_s, j * k_s + max_index % k_s]
-                        max_pool_for_back[bb, n, i * k_s + max_index // k_s, j * k_s + max_index % k_s] = 1
+
+        # 先获得到要用来比较大小的块，拉成向量，再获得每个向量中的最大值
+        max_indexs = list()
+        for i in range(new_h):
+            for j in range(new_w):
+                im_region = prev_data[:, :, (i * k_s):(i * k_s + k_s), (j * k_s):(j * k_s + k_s)]
+                max_indexs.append(im_region)
+        row_number = bach * num_filters * new_h * new_w
+        max_pool_for_back2 = np.asarray(max_indexs).reshape(row_number, k_s ** 2)
+        max_index2 = np.concatenate((np.arange(row_number), np.argmax(max_pool_for_back2, axis=1))).reshape(2,
+                                                                                                            row_number)
+        max_index2 = tuple(max_index2)
+        max_index3 = max_pool_for_back2[max_index2]
+        max_index3 = max_index3.reshape(new_h, new_w, num_filters * bach)
+        max_index3 = np.swapaxes(max_index3, 1, 2)
+        max_index3 = np.swapaxes(max_index3, 0, 1)
+        max_index3 = max_index3.reshape(bach, num_filters, new_h, new_w, )
+        output = max_index3
+
+        # 将最大值的位置记录下来，方便反向求导的时候使用
+        max_pool_for_back2[:, :] = 0
+        max_pool_for_back2[max_index2] = 1
+        max_pool_for_back23 = max_pool_for_back2.reshape(bach, num_filters, h, w)
+        max_pool_for_back = max_pool_for_back23
 
         self.max_pool_for_back = max_pool_for_back
         self.output = output
@@ -240,6 +262,30 @@ class MaxPool2d(BasicModule):
         return new_grad_p
 
 
+class Dropout(BasicModule):
+    def __init__(self, p=0.25):
+        """实现 dropout2d 激活函数"""
+        self.forward_output = None
+        self.p = p
+        self.filters = None
+
+    def forward(self, prev_data):
+        if np.ndim(prev_data) == 2:
+            b, l = prev_data.shape
+            self.filters = (np.random.rand(b, l) > self.p).astype(np.float32)
+        elif np.ndim(prev_data) == 3:
+            b, c, l = prev_data.shape
+            self.filters = (np.random.rand(b, c, l) > self.p).astype(np.float32)
+        else:
+            b, c, h, w = prev_data.shape
+            self.filters = (np.random.rand(b, c, h, w) > self.p).astype(np.float32)
+
+        return prev_data * self.filters
+
+    def backward(self, grad_b):
+        return grad_b * self.filters
+
+
 class Softmax(BasicModule):
 
     def __init__(self):
@@ -251,7 +297,7 @@ class Softmax(BasicModule):
         p_exp = np.exp(prev_data - np.max(prev_data, axis=0))
         # p_exp = np.exp(prev_data)
         denominator = np.sum(p_exp, axis=0, keepdims=True)
-        self.forward_output = p_exp / (denominator + self.epsilon)
+        self.forward_output = p_exp / denominator
         return self.forward_output
 
     def backward(self, grad_b):
@@ -260,6 +306,17 @@ class Softmax(BasicModule):
         :return:
         https://themaverickmeerkat.com/2019-10-23-Softmax/
         """
+        # forward_output = self.forward_output
+        # _input_grad = np.array([])
+        # c = forward_output.shape[0]
+        # for i in range(forward_output.shape[1]):
+        #     _forward_output = forward_output[:, i]
+        #     d_softmax = _forward_output * np.identity(c) - _forward_output.reshape(c, 1) @ _forward_output.reshape(1, c)
+        #     input_grad = grad_b[:, i] @ d_softmax
+        #     _input_grad = np.append(_input_grad, input_grad)
+        # _input_grad = _input_grad.reshape(int(_input_grad.shape[0] / c), c)
+        #
+        # return _input_grad.T
 
         return grad_b
 
@@ -310,34 +367,49 @@ class FirstNet(BasicModule):
         BasicModule.l_r = l_r
         self.head = [
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
             [Conv2d(1, 1, 3, padding=1),
-             Relu2d()],
+             Relu()],
         ]
+        # self.hides = [
+        #     Conv2d(1, 180, 5),
+        #     MaxPool2d(2),
+        #     Relu(),
+        #     Conv2d(180, 60, 5, padding=4),
+        #     Dropout(),
+        #     MaxPool2d(2),
+        #     Relu(),
+        #     Flatting(),
+        #     LinearLayer(3840, 50),
+        #     Relu(),
+        #     Dropout(),
+        #     LinearLayer(50, 10),
+        #     Softmax()]
         self.hides = [
             Conv2d(1, 6, 5),
-            Relu2d(),
             MaxPool2d(2),
+            Relu(),
             Conv2d(6, 12, 5, padding=4),
-            Relu2d(),
+            Dropout(0.1),
             MaxPool2d(2),
+            Relu(),
             Flatting(),
             LinearLayer(768, 10),
             Softmax()]
         self.error_measure = CrossEntropy()
 
     def forward(self, x, labels):
-        # x2 = np.array(x, dtype=float)
+        # x = np.array(x, dtype=float)
         # x = (x - np.mean(x, axis=(2, 3), keepdims=True)) / np.std(x, axis=(2, 3), keepdims=True)  # 将x进行标准化操作
 
         # b0, n0, h0, w0 = x.shape
