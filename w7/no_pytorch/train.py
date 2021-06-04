@@ -25,13 +25,13 @@ def train():
 
     _count = 1
     epoch = 200
-    L_R = 0.0005
-    bach = 16
+    L_R = 0.0001
+    bach = 500
     first_net = FirstNet(L_R)
-    # with open("net_save/first_net.pkl", 'rb') as file:
-    #     first_net = pickle.loads(file.read())
+    with open("net_save/first_net.pkl", 'rb') as file:
+        first_net = pickle.loads(file.read())
     first_net.l_r = L_R
-    test_accuracy=0
+    test_accuracy=0.9859
     for i in range(epoch):
         # if (epoch+1)%3==0:
         #     L_R *= 0.8
